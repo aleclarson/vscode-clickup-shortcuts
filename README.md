@@ -2,7 +2,7 @@
   <img src="icon.png" width="128" height="128" alt="Icon">
 </p>
 
-# ClickUp Tasks
+# ClickUp Shortcuts
 
 View and copy ClickUp task names and descriptions from a configured ClickUp folder using your personal API token.
 
