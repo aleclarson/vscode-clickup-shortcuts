@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="icon.png" width="128" height="128" alt="Icon">
+  <img src="https://github.com/aleclarson/vscode-clickup-shortcuts/blob/main/icon.png?raw=true" width="128" height="128" alt="Icon">
 </p>
 
 # ClickUp Shortcuts
