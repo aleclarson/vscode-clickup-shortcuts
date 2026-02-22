@@ -178,7 +178,7 @@ export function activate(context: vscode.ExtensionContext) {
 
         // Fetch tasks from the selected list
         const listRes = await fetch(
-          `https://api.clickup.com/api/v2/list/${selectedList.id}/task?include_closed=true`,
+          `https://api.clickup.com/api/v2/list/${selectedList.id}/task?include_closed=false`,
           {
             headers: { Authorization: token },
           },
