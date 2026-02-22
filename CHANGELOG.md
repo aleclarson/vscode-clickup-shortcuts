@@ -1,9 +1,12 @@
 # Change Log
 
-All notable changes to the "pullgod" extension will be documented in this file.
+All notable changes to the "clickup-tasks" extension will be documented in this file.
 
-Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
+## [0.0.1] - 2026-02-22
 
-## [1.0.0] - YYYY-MM-DD
-
-- Initial release
+- Initial release of ClickUp Tasks.
+- Interactively select a list and then a specific task from a ClickUp space.
+- Fetch and copy the selected task name and description.
+- Improved API token prompt with a "Get an API key" shortcut.
+- Prompt for API token and space selection if not configured.
+- Copy task to clipboard.

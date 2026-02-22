@@ -1,7 +1,7 @@
 {
-  "name": "placeholder",
-  "displayName": "ClickUp Shortcuts",
-  "description": "",
+  "name": "clickup-tasks",
+  "displayName": "ClickUp Tasks",
+  "description": "View and copy ClickUp task names/descriptions",
   "publisher": "aleclarson",
   "icon": "icon.png",
   "version": "0.0.1",
@@ -11,8 +11,32 @@
   "categories": [
     "Other"
   ],
+  "activationEvents": [
+    "onCommand:clickup-tasks.listTasks"
+  ],
   "main": "./out/extension.js",
   "contributes": {
+    "commands": [
+      {
+        "command": "clickup-tasks.listTasks",
+        "title": "ClickUp: List Tasks and Copy"
+      }
+    ],
+    "configuration": {
+      "title": "ClickUp",
+      "properties": {
+        "clickup.apiToken": {
+          "type": "string",
+          "default": "",
+          "description": "ClickUp Personal API Token"
+        },
+        "clickup.spaceId": {
+          "type": "string",
+          "default": "",
+          "description": "ClickUp Space ID"
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "pnpm run bundle",

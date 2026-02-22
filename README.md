@@ -2,24 +2,33 @@
   <img src="icon.png" width="128" height="128" alt="Icon">
 </p>
 
-# Placeholder
+# ClickUp Tasks
 
-<!-- Brief description of the extension -->
+View and copy ClickUp task names and descriptions from a configured ClickUp folder using your personal API token.
 
-Available on [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=aleclarson.placeholder) and [OpenVSX](https://open-vsx.org/extension/aleclarson/placeholder).
+## Setup Instructions
+
+On first run, the extension will automatically prompt you for your **ClickUp Personal API Token** if it's missing (get it from [ClickUp Settings > Apps](https://app.clickup.com/settings/apps)). If no **Space ID** is configured, you will be prompted to select a space from your ClickUp workspaces.
 
 ## Features
 
-<!-- Bulleted list of features -->
-
-## Prerequisites
-
-<!-- List any prerequisites for using the extension, such as other extensions or tools -->
+- Select a ClickUp space to fetch tasks from.
+- Interactively select a list from the space (including folder lists).
+- Interactively select a single task from the list.
+- Copy the selected task name and description to the clipboard.
 
 ## Contributed Commands
 
-<!-- List of commands contributed by the extension, with brief descriptions -->
+- `ClickUp: List Tasks and Copy`: Prompts for a list and then a task from the configured space and copies it.
+
+## Configuration
+
+- `clickup.apiToken`: Your ClickUp Personal API Token.
+- `clickup.spaceId`: The ID of the ClickUp space to fetch tasks from.
 
 ## Local Development
 
-<!-- Instructions for setting up a local development environment for the extension -->
+1.  Clone this repository.
+2.  Install dependencies: `pnpm install`.
+3.  Press `F5` in VS Code to open a new window with the extension loaded.
+4.  Run the command "ClickUp: List Tasks and Copy" from the Command Palette.
