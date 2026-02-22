@@ -1,228 +1,126 @@
 import * as vscode from "vscode";
+import { getLists, getTasks, Task, getCurrentUser, updateTask, fetchClickUp, Team, Space } from "./clickup";
+import { checkBranchExists, checkoutBranch, createBranch, pushBranch, installGitHooks, setGitConfig, fetchRemote } from "./git";
 
-interface Team {
-  id: string;
-  name: string;
-}
+async function getOrPromptConfig(): Promise<{ token: string; spaceId: string } | undefined> {
+  const config = vscode.workspace.getConfiguration("clickup");
+  let token = config.get<string>("apiToken");
+  let spaceId = config.get<string>("spaceId");
 
-interface Space {
-  id: string;
-  name: string;
-}
+  // Prompt for API Token if missing
+  if (!token) {
+    const selection = await vscode.window.showInformationMessage(
+      "ClickUp Personal API Token is missing.",
+      "Get an API key",
+      "Enter your API key",
+    );
 
-interface Folder {
-  id: string;
-  name: string;
-  lists?: List[];
-}
+    if (!selection) {
+      return;
+    }
 
-interface List {
-  id: string;
-  name: string;
-}
+    if (selection === "Get an API key") {
+      await vscode.env.openExternal(
+        vscode.Uri.parse("https://app.clickup.com/settings/apps"),
+      );
+    }
 
-interface Task {
-  id: string;
-  name: string;
-  description: string;
-  priority: {
-    id: string;
-    priority: string;
-    color: string;
-    orderindex: string;
-  } | null;
-}
+    const input = await vscode.window.showInputBox({
+      prompt: "Enter your ClickUp Personal API Token",
+      placeHolder: "pk_...",
+      ignoreFocusOut: true,
+    });
+    if (!input) {
+      return;
+    }
+    token = input;
+    await config.update(
+      "apiToken",
+      token,
+      vscode.ConfigurationTarget.Global,
+    );
+  }
 
-export function activate(context: vscode.ExtensionContext) {
-  const disposable = vscode.commands.registerCommand(
-    "clickup-shortcuts.listTasks",
-    async () => {
-      const config = vscode.workspace.getConfiguration("clickup");
-      let token = config.get<string>("apiToken");
-      let spaceId = config.get<string>("spaceId");
-
-      // Prompt for API Token if missing
-      if (!token) {
-        const selection = await vscode.window.showInformationMessage(
-          "ClickUp Personal API Token is missing.",
-          "Get an API key",
-          "Enter your API key",
-        );
-
-        if (!selection) {
-          return;
-        }
-
-        if (selection === "Get an API key") {
-          await vscode.env.openExternal(
-            vscode.Uri.parse("https://app.clickup.com/settings/apps"),
-          );
-        }
-
-        const input = await vscode.window.showInputBox({
-          prompt: "Enter your ClickUp Personal API Token",
-          placeHolder: "pk_...",
-          ignoreFocusOut: true,
-        });
-        if (!input) {
-          return;
-        }
-        token = input;
-        await config.update(
-          "apiToken",
-          token,
-          vscode.ConfigurationTarget.Global,
-        );
+  // Prompt for Space ID if missing
+  if (!spaceId) {
+    try {
+      const teamsRes = await fetchClickUp("/team", token) as { teams: Team[] };
+      const teams = teamsRes.teams;
+      if (!teams?.length) {
+        throw new Error("No teams found");
       }
 
-      // Prompt for Space ID if missing
-      if (!spaceId) {
-        try {
-          const teamsRes = await fetch("https://api.clickup.com/api/v2/team", {
-            headers: { Authorization: token },
-          });
-          const { teams } = (await teamsRes.json()) as { teams: Team[] };
-          if (!teams?.length) {
-            throw new Error("No teams found");
-          }
-
-          let team: Team | undefined;
-          if (teams.length > 1) {
-            const selected = await vscode.window.showQuickPick(
-              teams.map((t) => ({ label: t.name, team: t })),
-              { placeHolder: "Select ClickUp Team" },
-            );
-            team = selected?.team;
-          } else {
-            team = teams[0];
-          }
-          if (!team) {
-            return;
-          }
-
-          const spacesRes = await fetch(
-            `https://api.clickup.com/api/v2/team/${team.id}/space`,
-            {
-              headers: { Authorization: token },
-            },
-          );
-          const { spaces } = (await spacesRes.json()) as { spaces: Space[] };
-          const selectedSpace = await vscode.window.showQuickPick(
-            spaces.map((s) => ({ label: s.name, space: s })),
-            { placeHolder: "Select ClickUp Space" },
-          );
-          if (!selectedSpace) {
-            return;
-          }
-          const space = selectedSpace.space;
-
-          spaceId = space.id;
-          await config.update(
-            "spaceId",
-            spaceId,
-            vscode.ConfigurationTarget.Workspace,
-          );
-        } catch (err: any) {
-          vscode.window.showErrorMessage(`Setup failed: ${err.message}`);
-          return;
-        }
+      let team: Team | undefined;
+      if (teams.length > 1) {
+        const selected = await vscode.window.showQuickPick(
+          teams.map((t) => ({ label: t.name, team: t })),
+          { placeHolder: "Select ClickUp Team" },
+        );
+        team = selected?.team;
+      } else {
+        team = teams[0];
+      }
+      if (!team) {
+        return;
       }
 
-      try {
-        const lists: List[] = [];
+      const spacesRes = await fetchClickUp(`/team/${team.id}/space`, token) as { spaces: Space[] };
+      const spaces = spacesRes.spaces;
+      const selectedSpace = await vscode.window.showQuickPick(
+        spaces.map((s) => ({ label: s.name, space: s })),
+        { placeHolder: "Select ClickUp Space" },
+      );
+      if (!selectedSpace) {
+        return;
+      }
+      const space = selectedSpace.space;
 
-        // 1. Get lists directly in the space
-        const spaceListsRes = await fetch(
-          `https://api.clickup.com/api/v2/space/${spaceId}/list`,
-          {
-            headers: { Authorization: token },
-          },
-        );
-        const spaceListsData = (await spaceListsRes.json()) as { lists: List[] };
-        if (spaceListsData.lists) {
-          lists.push(...spaceListsData.lists);
-        }
+      spaceId = space.id;
+      await config.update(
+        "spaceId",
+        spaceId,
+        vscode.ConfigurationTarget.Workspace,
+      );
+    } catch (err: any) {
+      vscode.window.showErrorMessage(`Setup failed: ${err.message}`);
+      return;
+    }
+  }
 
-        // 2. Get folders and their lists in the space
-        const foldersRes = await fetch(
-          `https://api.clickup.com/api/v2/space/${spaceId}/folder`,
-          {
-            headers: { Authorization: token },
-          },
-        );
-        const foldersData = (await foldersRes.json()) as { folders: Folder[] };
-        if (foldersData.folders) {
-          for (const folder of foldersData.folders) {
-            if (folder.lists) {
-              // Add folder name to list name for better identification
-              lists.push(
-                ...folder.lists.map((l) => ({
-                  ...l,
-                  name: `${folder.name} > ${l.name}`,
-                })),
-              );
-            }
-          }
-        }
+  return { token, spaceId };
+}
 
+async function selectTask(token: string, spaceId: string): Promise<Task | undefined> {
+    try {
+        const lists = await getLists(spaceId, token);
         if (lists.length === 0) {
-          vscode.window.showInformationMessage("No lists found in space");
-          return;
+            vscode.window.showInformationMessage("No lists found in space");
+            return;
         }
 
-        // Prompt user to select a list
         const selectedListChoice = await vscode.window.showQuickPick(
-          lists.map((l) => ({ label: l.name, list: l })),
-          { placeHolder: "Select ClickUp List" },
+            lists.map((l) => ({ label: l.name, list: l })),
+            { placeHolder: "Select ClickUp List" }
         );
 
         if (!selectedListChoice) {
-          return;
+            return;
         }
 
-        const selectedList = selectedListChoice.list;
-
-        // Fetch tasks from the selected list
-        const listRes = await fetch(
-          `https://api.clickup.com/api/v2/list/${selectedList.id}/task?include_closed=false`,
-          {
-            headers: { Authorization: token },
-          },
-        );
-        const listData = (await listRes.json()) as { tasks: Task[] };
-        const tasks = listData.tasks || [];
-
+        const tasks = await getTasks(selectedListChoice.list.id, token);
         if (tasks.length === 0) {
-          vscode.window.showInformationMessage("No tasks found in list");
-          return;
+            vscode.window.showInformationMessage("No tasks found in list");
+            return;
         }
 
-        // Prompt user to select a task
-        const selectedTask = await selectTask(tasks);
-
-        if (!selectedTask) {
-          return;
-        }
-
-        // Format: Task Name\nDescription
-        const text = `${selectedTask.name}\n${selectedTask.description || ""}\n`;
-
-        await vscode.env.clipboard.writeText(text);
-        vscode.window.showInformationMessage(
-          `Copied task "${selectedTask.name}" to clipboard`,
-        );
-      } catch (error: any) {
-        vscode.window.showErrorMessage(`Error: ${error.message}`);
-      }
-    },
-  );
-
-  context.subscriptions.push(disposable);
+        return await promptTaskSelection(tasks);
+    } catch (error: any) {
+        vscode.window.showErrorMessage(`Error selecting task: ${error.message}`);
+        return;
+    }
 }
 
-export function deactivate() {}
-
-async function selectTask(tasks: Task[]): Promise<Task | undefined> {
+async function promptTaskSelection(tasks: Task[]): Promise<Task | undefined> {
   // Group tasks by priority
   const groups: { [key: number]: Task[] } = {
     0: [], // Urgent
@@ -320,9 +218,6 @@ function getPriorityValue(task: Task): number {
   if (!task.priority) {
     return 4; // No priority (lowest)
   }
-  // If orderindex is available, use it (assuming 1=Urgent, 2=High, 3=Normal, 4=Low)
-  // However, the API returns it as string.
-  // Also check priority name for safety.
   switch (task.priority.priority.toLowerCase()) {
     case "urgent":
       return 0;
@@ -351,3 +246,98 @@ function getPriorityLabel(priorityValue: number): string {
       return "No Priority";
   }
 }
+
+export function activate(context: vscode.ExtensionContext) {
+  const listTasksDisposable = vscode.commands.registerCommand(
+    "clickup-shortcuts.listTasks",
+    async () => {
+      const config = await getOrPromptConfig();
+      if (!config) {
+        return;
+      }
+
+      const task = await selectTask(config.token, config.spaceId);
+      if (!task) {
+        return;
+      }
+
+      const text = `${task.name}\n${task.description || ""}\n`;
+      await vscode.env.clipboard.writeText(text);
+      vscode.window.showInformationMessage(
+        `Copied task "${task.name}" to clipboard`,
+      );
+    }
+  );
+
+  const checkoutTaskDisposable = vscode.commands.registerCommand(
+      "clickup-shortcuts.checkoutTaskBranch",
+      async () => {
+          const config = await getOrPromptConfig();
+          if (!config) {
+            return;
+          }
+
+          const task = await selectTask(config.token, config.spaceId);
+          if (!task) {
+            return;
+          }
+
+          const branchName = `clickup/${task.id}`;
+
+          // Git operations
+          try {
+             await vscode.window.withProgress({
+                 location: vscode.ProgressLocation.Notification,
+                 title: `Checking out task branch ${branchName}...`,
+                 cancellable: false
+             }, async (progress) => {
+                 progress.report({ message: "Checking remote branches..." });
+                 await fetchRemote();
+                 const { local, remote } = await checkBranchExists(branchName);
+
+                 if (local) {
+                     progress.report({ message: "Checking out local branch..." });
+                     await checkoutBranch(branchName);
+                 } else if (remote) {
+                     progress.report({ message: "Checking out remote branch..." });
+                     await checkoutBranch(branchName);
+                 } else {
+                     progress.report({ message: "Creating new branch..." });
+                     await createBranch(branchName, "main");
+                     await pushBranch(branchName);
+                 }
+
+                 progress.report({ message: "Updating task status..." });
+                 // Update task status and assignee
+                 const user = await getCurrentUser(config.token);
+                 await updateTask(task.id, {
+                     status: "in progress",
+                     assignees: {
+                         add: [user.id]
+                     }
+                 }, config.token);
+
+                 progress.report({ message: "Installing git hooks..." });
+                 // Set config for hooks
+                 await setGitConfig("clickup.apiToken", config.token);
+                 // We also set current task immediately so hook knows we are here
+                 await setGitConfig("clickup.currentTask", task.id);
+
+                 await installGitHooks(context);
+             });
+
+             const text = `${task.name}\n${task.description || ""}\n`;
+             await vscode.env.clipboard.writeText(text);
+
+             vscode.window.showInformationMessage(`Checked out ${branchName} and updated task!`);
+
+          } catch (err: any) {
+              vscode.window.showErrorMessage(`Error: ${err.message}`);
+          }
+      }
+  );
+
+  context.subscriptions.push(listTasksDisposable, checkoutTaskDisposable);
+}
+
+export function deactivate() {}

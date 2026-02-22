@@ -1,7 +1,7 @@
 import { defineConfig } from "tsup";
 
 export default defineConfig({
-  entry: ["src/extension.ts"],
+  entry: ["src/extension.ts", "src/git-hook.ts"],
   format: ["cjs"],
   external: ["vscode"],
   minify: true,
