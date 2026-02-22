@@ -266,16 +266,21 @@ async function selectTask(tasks: Task[]): Promise<Task | undefined> {
 
   // Create QuickPick items for the top tasks
   const items: (vscode.QuickPickItem & { task?: Task; isLoadMore?: boolean })[] =
-    topTasks.map((t) => ({
-      label: t.name,
-      description: t.description || "",
-      task: t,
-    }));
+    topTasks.map((t) => {
+      const priorityValue = getPriorityValue(t);
+      const priorityLabel = getPriorityLabel(priorityValue);
+      return {
+        label: t.name,
+        detail: `$(flag) ${priorityLabel}` + (t.description ? ` $(file-text) ${t.description}` : ""),
+        task: t,
+      };
+    });
 
   // Add "View more" option if there are remaining tasks
   if (remainingTasks.length > 0) {
     items.push({
-      label: `$(chevron-down) View tasks with ${nextPriorityLabel} priority or lower`,
+      label: "",
+      description: `$(chevron-down) View tasks with ${nextPriorityLabel} priority or lower`,
       isLoadMore: true,
       alwaysShow: true,
     });
@@ -291,11 +296,15 @@ async function selectTask(tasks: Task[]): Promise<Task | undefined> {
 
   if (selectedChoice.isLoadMore) {
     // Show remaining tasks sorted by priority
-    const remainingItems = remainingTasks.map((t) => ({
-      label: `[${getPriorityLabel(getPriorityValue(t))}] ${t.name}`,
-      description: t.description || "",
-      task: t,
-    }));
+    const remainingItems = remainingTasks.map((t) => {
+      const priorityValue = getPriorityValue(t);
+      const priorityLabel = getPriorityLabel(priorityValue);
+      return {
+        label: t.name,
+        detail: `$(flag) ${priorityLabel}` + (t.description ? ` $(file-text) ${t.description}` : ""),
+        task: t,
+      };
+    });
 
     const selectedRemaining = await vscode.window.showQuickPick(remainingItems, {
       placeHolder: "Select from remaining tasks",
