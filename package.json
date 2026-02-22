@@ -1,5 +1,5 @@
 {
-  "name": "clickup-tasks",
+  "name": "clickup-shortcuts",
   "displayName": "ClickUp Tasks",
   "description": "View and copy ClickUp task names/descriptions",
   "publisher": "aleclarson",
@@ -12,13 +12,13 @@
     "Other"
   ],
   "activationEvents": [
-    "onCommand:clickup-tasks.listTasks"
+    "onCommand:clickup-shortcuts.listTasks"
   ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "clickup-tasks.listTasks",
+        "command": "clickup-shortcuts.listTasks",
         "title": "ClickUp: List Tasks and Copy"
       }
     ],

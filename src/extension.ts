@@ -29,7 +29,7 @@ interface Task {
 
 export function activate(context: vscode.ExtensionContext) {
   const disposable = vscode.commands.registerCommand(
-    "clickup-tasks.listTasks",
+    "clickup-shortcuts.listTasks",
     async () => {
       const config = vscode.workspace.getConfiguration("clickup");
       let token = config.get<string>("apiToken");
