@@ -25,6 +25,12 @@ interface Task {
   id: string;
   name: string;
   description: string;
+  priority: {
+    id: string;
+    priority: string;
+    color: string;
+    orderindex: string;
+  } | null;
 }
 
 export function activate(context: vscode.ExtensionContext) {
@@ -192,20 +198,11 @@ export function activate(context: vscode.ExtensionContext) {
         }
 
         // Prompt user to select a task
-        const selectedTaskChoice = await vscode.window.showQuickPick(
-          tasks.map((t) => ({
-            label: t.name,
-            description: t.description || "",
-            task: t,
-          })),
-          { placeHolder: "Select ClickUp Task" },
-        );
+        const selectedTask = await selectTask(tasks);
 
-        if (!selectedTaskChoice) {
+        if (!selectedTask) {
           return;
         }
-
-        const selectedTask = selectedTaskChoice.task;
 
         // Format: Task Name\nDescription
         const text = `${selectedTask.name}\n${selectedTask.description || ""}\n`;
@@ -224,3 +221,124 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 export function deactivate() {}
+
+async function selectTask(tasks: Task[]): Promise<Task | undefined> {
+  // Group tasks by priority
+  const groups: { [key: number]: Task[] } = {
+    0: [], // Urgent
+    1: [], // High
+    2: [], // Normal
+    3: [], // Low
+    4: [], // No Priority
+  };
+
+  tasks.forEach((task) => {
+    const priority = getPriorityValue(task);
+    groups[priority].push(task);
+  });
+
+  // Find the highest priority group with tasks
+  let highestPriorityGroupIndex = -1;
+  for (let i = 0; i <= 4; i++) {
+    if (groups[i].length > 0) {
+      highestPriorityGroupIndex = i;
+      break;
+    }
+  }
+
+  if (highestPriorityGroupIndex === -1) {
+    return undefined;
+  }
+
+  const topTasks = groups[highestPriorityGroupIndex];
+  let remainingTasks: Task[] = [];
+  let nextPriorityLabel = "";
+
+  // Collect all remaining tasks
+  for (let i = highestPriorityGroupIndex + 1; i <= 4; i++) {
+    if (groups[i].length > 0) {
+      if (nextPriorityLabel === "") {
+        nextPriorityLabel = getPriorityLabel(i);
+      }
+      remainingTasks.push(...groups[i]);
+    }
+  }
+
+  // Create QuickPick items for the top tasks
+  const items: (vscode.QuickPickItem & { task?: Task; isLoadMore?: boolean })[] =
+    topTasks.map((t) => ({
+      label: t.name,
+      description: t.description || "",
+      task: t,
+    }));
+
+  // Add "View more" option if there are remaining tasks
+  if (remainingTasks.length > 0) {
+    items.push({
+      label: `$(chevron-down) View tasks with ${nextPriorityLabel} priority or lower`,
+      isLoadMore: true,
+      alwaysShow: true,
+    });
+  }
+
+  const selectedChoice = await vscode.window.showQuickPick(items, {
+    placeHolder: `Select ClickUp Task (${getPriorityLabel(highestPriorityGroupIndex)})`,
+  });
+
+  if (!selectedChoice) {
+    return undefined;
+  }
+
+  if (selectedChoice.isLoadMore) {
+    // Show remaining tasks sorted by priority
+    const remainingItems = remainingTasks.map((t) => ({
+      label: `[${getPriorityLabel(getPriorityValue(t))}] ${t.name}`,
+      description: t.description || "",
+      task: t,
+    }));
+
+    const selectedRemaining = await vscode.window.showQuickPick(remainingItems, {
+      placeHolder: "Select from remaining tasks",
+    });
+
+    return selectedRemaining?.task;
+  }
+
+  return selectedChoice.task;
+}
+
+function getPriorityValue(task: Task): number {
+  if (!task.priority) {
+    return 4; // No priority (lowest)
+  }
+  // If orderindex is available, use it (assuming 1=Urgent, 2=High, 3=Normal, 4=Low)
+  // However, the API returns it as string.
+  // Also check priority name for safety.
+  switch (task.priority.priority.toLowerCase()) {
+    case "urgent":
+      return 0;
+    case "high":
+      return 1;
+    case "normal":
+      return 2;
+    case "low":
+      return 3;
+    default:
+      return 4;
+  }
+}
+
+function getPriorityLabel(priorityValue: number): string {
+  switch (priorityValue) {
+    case 0:
+      return "Urgent";
+    case 1:
+      return "High";
+    case 2:
+      return "Normal";
+    case 3:
+      return "Low";
+    default:
+      return "No Priority";
+  }
+}
