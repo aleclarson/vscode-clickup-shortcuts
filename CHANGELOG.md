@@ -2,7 +2,7 @@
 
 All notable changes to the "clickup-shortcuts" extension will be documented in this file.
 
-## [Unreleased]
+## [1.1.0] - 2026-02-22
 
 - Group tasks by priority in task selection list.
 
