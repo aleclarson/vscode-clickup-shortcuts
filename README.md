@@ -15,11 +15,14 @@ On first run, the extension will automatically prompt you for your **ClickUp Per
 - Select a ClickUp space to fetch tasks from.
 - Interactively select a list from the space (including folder lists).
 - Interactively select a single task from the list.
-- Copy the selected task name and description to the clipboard.
+- **Tasks are grouped by priority** for easier selection.
+- **Checkout task branch**: Automates creating and switching to branches named `clickup/<task-id>`, updates task status to "in progress", and assigns it to you.
+- **Integrated Git hooks**: Automatically updates task status to "complete" when a task branch is merged into `main`.
 
 ## Contributed Commands
 
-- `ClickUp: List Tasks and Copy`: Prompts for a list and then a task from the configured space and copies it.
+- `ClickUp: List Tasks and Copy`: Prompts for a list and then a task from the configured space and copies its name and description.
+- `ClickUp: Checkout task branch`: Prompts for a task, checks out its branch, and updates its status in ClickUp.
 
 ## Configuration
 
