@@ -12,7 +12,8 @@
     "Other"
   ],
   "activationEvents": [
-    "onCommand:clickup-shortcuts.listTasks"
+    "onCommand:clickup-shortcuts.listTasks",
+    "onCommand:clickup-shortcuts.checkoutTaskBranch"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -20,6 +21,10 @@
       {
         "command": "clickup-shortcuts.listTasks",
         "title": "ClickUp: List Tasks and Copy"
+      },
+      {
+        "command": "clickup-shortcuts.checkoutTaskBranch",
+        "title": "ClickUp: Checkout task branch"
       }
     ],
     "configuration": {
